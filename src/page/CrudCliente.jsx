@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import TableGeneralCustom from "../components/table/TableGeneralCustom";
 import ModalCliente from "../components/modal/ModalCliente";
+import ResultModal from "../components/modal/ResultModal"; 
 
 import Logo from "../assets/logo/logo.webp"; // Logo de la app
 
@@ -14,11 +15,16 @@ export default function CrudCliente() {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal states
+  // Modal de CRUD
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   // 0 => create, 1 => read, 2 => update, 3 => delete
   const [selectedAction, setSelectedAction] = useState(0);
+
+  // Modal de resultado (mini-modal)
+  const [isResultOpen, setIsResultOpen] = useState(false);
+  const [resultSuccess, setResultSuccess] = useState(false);
+  const [resultMessage, setResultMessage] = useState("");
 
   // Búsqueda en cliente
   const [searchText, setSearchText] = useState("");
@@ -65,12 +71,16 @@ export default function CrudCliente() {
   const handleConfirm = async () => {
     try {
       await crudCliente(selectedItem, selectedAction);
-      alert("Operación completada correctamente.");
+      setResultSuccess(true);
+      setResultMessage("Operación completada correctamente.");
       setIsOpen(false);
       loadData();
     } catch (error) {
       console.error(error);
-      alert("Error al ejecutar la operación.");
+      setResultSuccess(false);
+      setResultMessage("Error al ejecutar la operación.");
+    } finally {
+      setIsResultOpen(true);
     }
   };
 
@@ -83,13 +93,10 @@ export default function CrudCliente() {
   // Lógica de paginación
   const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-  // Cortamos los datos a la página actual
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
 
-  // Funciones para avanzar/retroceder página
   const goToPreviousPage = () => {
     if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
@@ -97,9 +104,6 @@ export default function CrudCliente() {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  if (isLoading) {
-    return <div className="p-4">Cargando datos...</div>;
-  }
 
   // Columnas para la tabla
   const columns = [
@@ -115,7 +119,7 @@ export default function CrudCliente() {
   const renderCustomCell = (item, columnKey) => {
     switch (columnKey) {
       case "id":
-        return <span>{item.id}</span>; // sin #
+        return <span>{item.id}</span>;
       case "nombre":
         return (
           <div className="flex flex-col text-center">
@@ -135,7 +139,6 @@ export default function CrudCliente() {
       case "actions":
         return (
           <div className="flex items-center gap-2 justify-center">
-            {/* Ver */}
             <button
               className="text-blue-600 hover:text-blue-800"
               title="Ver"
@@ -143,8 +146,6 @@ export default function CrudCliente() {
             >
               <Eye width={18} height={18} />
             </button>
-
-            {/* Editar */}
             <button
               className="text-green-600 hover:text-green-800"
               title="Editar"
@@ -152,8 +153,6 @@ export default function CrudCliente() {
             >
               <Pencil width={18} height={18} />
             </button>
-
-            {/* Eliminar */}
             <button
               className="text-red-600 hover:text-red-800"
               title="Eliminar"
@@ -170,19 +169,23 @@ export default function CrudCliente() {
 
   return (
     <div className="bg-gray-50 min-h-screen p-6">
+      {/* Mini-modal de resultado */}
+      <ResultModal
+        isOpen={isResultOpen}
+        onClose={() => setIsResultOpen(false)}
+        success={resultSuccess}
+        message={resultMessage}
+      />
+
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-      <div className="flex items-center gap-2">
-    <img
-      src={Logo}
-      alt="Logo"
-      className="w-30 h-15 object-contain mt-4"
-    />
-    <div className="text-left leading-tight">
-      <h1 className="text-xl font-bold text-gray-800">CRUD de Clientes</h1>
-      <p className="text-gray-600 text-sm">Gestiona tus clientes de manera eficiente</p>
-    </div>
-  </div>
+        <div className="flex items-center gap-2">
+          <img src={Logo} alt="Logo" className="w-30 h-15 object-contain mt-4" />
+          <div className="text-left leading-tight">
+            <h1 className="text-xl font-bold text-gray-800">CRUD de Clientes</h1>
+            <p className="text-gray-600 text-sm">Gestiona tus clientes de manera eficiente</p>
+          </div>
+        </div>
         {/* Botón registrar */}
         <button
           className="mt-4 md:mt-0 inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -195,14 +198,14 @@ export default function CrudCliente() {
 
       {/* Card principal */}
       <div className="bg-white rounded shadow-md p-4">
-        {/* Buscador (opcional) */}
+        {/* Buscador */}
         <div className="w-full mb-4">
           <input
             type="text"
             placeholder="Buscar clientes..."
             value={searchText}
             onChange={(e) => {
-              setCurrentPage(1); // Reiniciamos pag al filtrar
+              setCurrentPage(1);
               setSearchText(e.target.value);
             }}
             className="block w-full border border-gray-300 rounded px-3 py-2 text-sm placeholder-gray-400"
@@ -219,33 +222,33 @@ export default function CrudCliente() {
         />
 
         {/* Footer con paginación y conteo */}
-<div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600">
-  <span className="mb-2 sm:mb-0">
-    Mostrando {currentData.length} de {filteredData.length} resultados
-  </span>
-  <div className="flex items-center gap-2">
-    <button
-      onClick={goToPreviousPage}
-      disabled={currentPage === 1}
-      className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50"
-    >
-      <ChevronLeft className="w-5 h-5" />
-    </button>
-    <span>
-      Página {currentPage} de {totalPages}
-    </span>
-    <button
-      onClick={goToNextPage}
-      disabled={currentPage === totalPages}
-      className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50"
-    >
-      <ChevronRight className="w-5 h-5" />
-    </button>
-  </div>
-</div>
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600">
+          <span className="mb-2 sm:mb-0">
+            Mostrando {currentData.length} de {filteredData.length} resultados
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+              className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span>
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal de CRUD de clientes */}
       <ModalCliente
         isOpen={isOpen}
         onClose={closeModal}
